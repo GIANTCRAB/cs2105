@@ -1,3 +1,4 @@
+package assignment0;
 
 import java.io.*;
 import java.util.zip.CRC32;
