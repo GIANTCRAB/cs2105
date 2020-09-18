@@ -174,9 +174,8 @@ public class WebServer {
         }
 
         public void printOkResponseWithContent(byte[] content) throws IOException {
-            out.write(("200\nOK\ncontent-length\n" + content.length + "\n").getBytes());
+            out.write(("200\nOK\ncontent-length\n" + content.length + "\n\n").getBytes());
             out.write(content);
-            out.write("\n\n".getBytes());
             out.flush();
         }
     }
