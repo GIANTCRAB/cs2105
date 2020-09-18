@@ -64,46 +64,47 @@ public class WebServer {
             char headerBoundaryChar = '\n';
             int continuousNewLineCount = 0;
             final int maxContinuousNewLineCount = 2;
+            boolean headerComplete = false;
             String header = "";
             int payloadSizeBytes = 0;
             int payloadIndex = 0;
             byte[] payload = new byte[payloadSizeBytes];
             // read data only if it is a POST
-            boolean readData = true;
-            String storeType = "";
+            String storeType;
             String keyToWrite = "";
 
             // Read one byte at a time from stdin
             while ((currByte = in.read()) != -1) { // not reached end of stream
-                if (0 == payloadSizeBytes && readData) {
+                if (0 == payloadSizeBytes) {
                     // Get header
                     currChar = (char) currByte;
-                    if (currChar != headerBoundaryChar && continuousNewLineCount != maxContinuousNewLineCount) {
-                        header += String.valueOf(currChar);
-                        continuousNewLineCount = 0; // Reset continuous new line data
-                        continue;
-                    } else {
-                        if (continuousNewLineCount < maxContinuousNewLineCount) {
+                    if (!headerComplete) {
+                        if (currChar != headerBoundaryChar) {
                             header += String.valueOf(currChar);
-                            continuousNewLineCount++;
+                            continuousNewLineCount = 0; // Reset continuous new line data
                             continue;
                         } else {
                             continuousNewLineCount++;
-                            // Now move on to reading the data, do not call "continue"
+                            if (continuousNewLineCount < maxContinuousNewLineCount) {
+                                header += String.valueOf(currChar);
+                                continue;
+                            } else {
+                                headerComplete = true;
+                                // carry on to the next step of parsing the data, do not call continue
+                            }
                         }
                     }
 
+                    // Parsing header data
                     final String[] headerData = header.split("\n");
                     // Read store type
-                    final String[] pathData = header.split("/");
+                    final String[] pathData = headerData[1].split("/");
                     // 0 is empty
                     storeType = pathData[1];
                     keyToWrite = pathData[2];
 
                     if (headerData.length < 4) {
                         // no content-length in header
-                        readData = false;
-
                         if (storeType.toLowerCase().equals("counter")) {
                             final int count = counterStore.getOrDefault(keyToWrite, 0);
                             if (headerData[0].toLowerCase().equals("get")) {
@@ -113,6 +114,12 @@ public class WebServer {
                                 counterStore.put(keyToWrite, count + 1);
                                 printOkResponseWithNoContent();
                             }
+
+                            // Reset
+                            payloadSizeBytes = 0;
+                            header = "";
+                            headerComplete = false;
+                            continuousNewLineCount = 0;
                         } else {
                             // key-value store
                             if (headerData[0].toLowerCase().equals("get")) {
@@ -123,7 +130,12 @@ public class WebServer {
                                 } else {
                                     printOkResponseWithContent(data);
                                 }
-                            } else {
+
+                                // Reset
+                                payloadSizeBytes = 0;
+                                header = "";
+                                headerComplete = false;
+                                continuousNewLineCount = 0;
                             }
                         }
                     } else {
@@ -135,19 +147,18 @@ public class WebServer {
                     continue; // currChar will be headerBoundaryChar, hence go to next iteration to read 1st payload byte
                 }
 
-                if (readData) {
-                    // Read 1 byte of payload
-                    payload[payloadIndex] = (byte) currByte;
-                    payloadIndex++;
-                    if (payloadIndex >= payloadSizeBytes) { // finished reading payload
-                        kvStore.put(keyToWrite, payload);
-                        // Write out that it is done
-                        printOkResponseWithNoContent();
-                        // Reset
-                        payloadSizeBytes = 0;
-                        header = "";
-                        readData = true;
-                    }
+                // Read 1 byte of payload
+                payload[payloadIndex] = (byte) currByte;
+                payloadIndex++;
+                if (payloadIndex >= payloadSizeBytes) { // finished reading payload
+                    kvStore.put(keyToWrite, payload);
+                    // Write out that it is done
+                    printOkResponseWithNoContent();
+                    // Reset
+                    payloadSizeBytes = 0;
+                    header = "";
+                    headerComplete = false;
+                    continuousNewLineCount = 0;
                 }
             }
         }
@@ -163,7 +174,7 @@ public class WebServer {
         }
 
         public void printOkResponseWithContent(byte[] content) throws IOException {
-            out.write(("200\nOK\n" + content.length + "\n").getBytes());
+            out.write(("200\nOK\ncontent-length\n" + content.length + "\n").getBytes());
             out.write(content);
             out.write("\n\n".getBytes());
             out.flush();
