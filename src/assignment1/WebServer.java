@@ -165,18 +165,15 @@ public class WebServer {
 
         public void printNotFoundResponse() throws IOException {
             out.write("404\nNotFound\n\n".getBytes());
-            out.flush();
         }
 
         public void printOkResponseWithNoContent() throws IOException {
             out.write("200\nOK\n\n".getBytes());
-            out.flush();
         }
 
         public void printOkResponseWithContent(byte[] content) throws IOException {
             out.write(("200\nOK\ncontent-length\n" + content.length + "\n\n").getBytes());
             out.write(content);
-            out.flush();
         }
     }
 }
