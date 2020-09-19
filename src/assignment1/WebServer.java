@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -66,6 +68,7 @@ public class WebServer {
             final int maxContinuousNewLineCount = 2;
             boolean headerComplete = false;
             String header = "";
+            List<String> headerInfo = new ArrayList<>();
             int payloadSizeBytes = 0;
             int payloadIndex = 0;
             byte[] payload = new byte[payloadSizeBytes];
@@ -86,7 +89,8 @@ public class WebServer {
                         } else {
                             continuousNewLineCount++;
                             if (continuousNewLineCount < maxContinuousNewLineCount) {
-                                header += String.valueOf(currChar);
+                                headerInfo.add(header);
+                                header = "";
                                 continue;
                             } else {
                                 headerComplete = true;
@@ -96,18 +100,18 @@ public class WebServer {
                     }
 
                     // Parsing header data
-                    final String[] headerData = header.split("\n");
+                    final String responseType = headerInfo.get(0).toLowerCase();
                     // Read store type
-                    final String[] pathData = headerData[1].split("/");
+                    final String[] pathData = headerInfo.get(1).split("/");
                     // 0 is empty
                     storeType = pathData[1];
                     keyToWrite = pathData[2];
 
-                    if (headerData.length < 4) {
+                    if (headerInfo.size() < 4) {
                         // no content-length in header
                         if (storeType.toLowerCase().equals("counter")) {
                             final int count = counterStore.getOrDefault(keyToWrite, 0);
-                            if (headerData[0].toLowerCase().equals("get")) {
+                            if (responseType.equals("get")) {
                                 printOkResponseWithContent(String.valueOf(count).getBytes());
                             } else {
                                 // POST to increment
@@ -118,11 +122,12 @@ public class WebServer {
                             // Reset
                             payloadSizeBytes = 0;
                             header = "";
+                            headerInfo = new ArrayList<>();
                             headerComplete = false;
                             continuousNewLineCount = 0;
                         } else {
                             // key-value store
-                            if (headerData[0].toLowerCase().equals("get")) {
+                            if (responseType.equals("get")) {
                                 // retrieve data
                                 byte[] data = kvStore.get(keyToWrite);
                                 if (data == null) {
@@ -134,13 +139,14 @@ public class WebServer {
                                 // Reset
                                 payloadSizeBytes = 0;
                                 header = "";
+                                headerInfo = new ArrayList<>();
                                 headerComplete = false;
                                 continuousNewLineCount = 0;
                             }
                         }
                     } else {
                         // Get payload size in bytes from header
-                        payloadSizeBytes = Integer.parseInt(headerData[3]);
+                        payloadSizeBytes = Integer.parseInt(headerInfo.get(3));
                         payload = new byte[payloadSizeBytes];
                         payloadIndex = 0;
                     }
@@ -157,6 +163,7 @@ public class WebServer {
                     // Reset
                     payloadSizeBytes = 0;
                     header = "";
+                    headerInfo = new ArrayList<>();
                     headerComplete = false;
                     continuousNewLineCount = 0;
                 }
