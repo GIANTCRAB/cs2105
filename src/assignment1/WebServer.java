@@ -53,7 +53,8 @@ public class WebServer {
         final int maxContinuousNewLineCount = 2;
         boolean headerComplete = false;
         String header = "";
-        List<String> headerInfo = new ArrayList<>();
+        final int maxHeaderSize = 4;
+        List<String> headerInfo = new ArrayList<>(maxHeaderSize);
         int payloadSizeBytes = 0;
         int payloadIndex = 0;
         byte[] payload = new byte[payloadSizeBytes];
@@ -65,28 +66,28 @@ public class WebServer {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         while (clientSocket.read(buffer) != -1) { // not reached end of stream
             System.out.println("reading byte");
-            buffer.flip();
             ByteArrayInputStream is = new ByteArrayInputStream(buffer.array());
-            while ((currByte = is.read()) != -1) {
-
-
+            while ((currByte = is.read()) != 0) {
                 if (0 == payloadSizeBytes) {
                     // Get header
                     currChar = (char) currByte;
-                    System.out.println("reading header");
                     if (!headerComplete) {
                         if (currChar != headerBoundaryChar) {
                             header += String.valueOf(currChar);
                             continuousNewLineCount = 0; // Reset continuous new line data
                             continue;
                         } else {
+                            // One part of the header is completed
                             continuousNewLineCount++;
                             if (continuousNewLineCount < maxContinuousNewLineCount) {
                                 headerInfo.add(header);
                                 header = "";
                                 continue;
                             } else {
+                                // Complete end boundary
                                 headerComplete = true;
+                                continuousNewLineCount = 0; // Reset continuous new line data
+                                header = "";
                                 // carry on to the next step of parsing the data, do not call continue
                             }
                         }
@@ -94,13 +95,21 @@ public class WebServer {
 
                     // Parsing header data
                     final String responseType = headerInfo.get(0).toLowerCase();
+                    System.out.println("responses data");
+                    System.out.println(headerInfo.get(0));
                     // Read store type
+                    // path is /counter/<key> or /cache/<key>
                     final String[] pathData = headerInfo.get(1).split("/");
                     // 0 is empty
+                    System.out.println("path data");
+                    System.out.println(headerInfo.get(1));
                     storeType = pathData[1];
                     keyToWrite = pathData[2];
 
-                    if (headerInfo.size() < 4) {
+                    System.out.println("header size");
+                    System.out.println(headerInfo.size());
+
+                    if (headerInfo.size() < maxHeaderSize) {
                         // no content-length in header
                         if (storeType.toLowerCase().equals("counter")) {
                             final int count = counterStore.getOrDefault(keyToWrite, 0);
@@ -113,11 +122,8 @@ public class WebServer {
                             }
 
                             // Reset
-                            payloadSizeBytes = 0;
-                            header = "";
-                            headerInfo = new ArrayList<>();
+                            headerInfo = new ArrayList<>(maxHeaderSize);
                             headerComplete = false;
-                            continuousNewLineCount = 0;
                         } else {
                             // key-value store
                             if (responseType.equals("get")) {
@@ -130,11 +136,8 @@ public class WebServer {
                                 }
 
                                 // Reset
-                                payloadSizeBytes = 0;
-                                header = "";
-                                headerInfo = new ArrayList<>();
+                                headerInfo = new ArrayList<>(maxHeaderSize);
                                 headerComplete = false;
-                                continuousNewLineCount = 0;
                             }
                         }
                     } else {
@@ -155,13 +158,10 @@ public class WebServer {
                     printOkResponseWithNoContent();
                     // Reset
                     payloadSizeBytes = 0;
-                    header = "";
-                    headerInfo = new ArrayList<>();
+                    headerInfo = new ArrayList<>(maxHeaderSize);
                     headerComplete = false;
-                    continuousNewLineCount = 0;
                 }
             }
-            buffer.clear();
         }
     }
 
