@@ -21,6 +21,8 @@ public class TestClient {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream());
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            new EchoClientHandler().start();
         }
 
         public void sendMessage(String msg) throws IOException {
@@ -28,14 +30,16 @@ public class TestClient {
             out.flush();
         }
 
-        public void readMsg() throws IOException {
-            in.lines().forEach(System.out::println);
-        }
-
         public void stopConnection() throws IOException {
             in.close();
             out.close();
             clientSocket.close();
+        }
+
+        private class EchoClientHandler extends Thread {
+            public void run() {
+                in.lines().forEach(System.out::println);
+            }
         }
     }
 
@@ -44,14 +48,18 @@ public class TestClient {
         try {
             client1.startConnection("127.0.0.1", 8080);
             client1.sendMessage("GET\n/key/CS2105\n\n");
+            Thread.sleep(1000);
             client1.sendMessage("POST\n/key/ModuleCode\nContent-Length\n6\n\nCS2105");
+            Thread.sleep(1000);
             client1.sendMessage("GET\n/key/ModuleCode\n\n");
+            Thread.sleep(1000);
             client1.sendMessage("GET\n/counter/CS2105\n\n");
+            Thread.sleep(1000);
             client1.sendMessage("POST\n/counter/StudentNumber\n\n");
+            Thread.sleep(1000);
             client1.sendMessage("GET\n/counter/StudentNumber\n\n");
-            client1.readMsg();
-            client1.stopConnection();
-        } catch (IOException e) {
+            //client1.stopConnection();
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
