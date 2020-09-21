@@ -57,8 +57,8 @@ public class WebServer {
         boolean headerComplete = false;
         String header = "";
         List<String> headerInfo = new ArrayList<>();
-        int payloadSizeBytes = 0;
-        byte[] payload = new byte[payloadSizeBytes];
+        int payloadSizeBytes;
+        byte[] payload;
         // read data only if it is a POST
         String storeType;
         String keyToWrite = "";
