@@ -12,13 +12,12 @@ import java.util.concurrent.ConcurrentMap;
 
 public class WebServer {
     private ServerSocket serverSocket;
-    private Socket clientSocket;
     private DataOutputStream out;
     private DataInputStream in;
-    private int portNumber;
+    private final int portNumber;
 
-    private static ConcurrentHashMap<String, byte[]> kvStore = new ConcurrentHashMap<>();
-    private static ConcurrentMap<String, Integer> counterStore = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, byte[]> kvStore = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Integer> counterStore = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
         final WebServer webServer = new WebServer(Integer.parseInt(args[0]));
@@ -33,7 +32,7 @@ public class WebServer {
         serverSocket = new ServerSocket(this.portNumber);
         while (true) {
             System.out.println("starting");
-            clientSocket = serverSocket.accept();
+            final Socket clientSocket = serverSocket.accept();
             clientSocket.setKeepAlive(true);
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
