@@ -1,14 +1,12 @@
 package assignment1;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 
 public class WebServer {
     private ServerSocket serverSocket;
@@ -16,8 +14,8 @@ public class WebServer {
     private DataInputStream in;
     private final int portNumber;
 
-    private static final ConcurrentHashMap<String, byte[]> kvStore = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<String, Integer> counterStore = new ConcurrentHashMap<>();
+    private static final HashMap<String, byte[]> kvStore = new HashMap<>();
+    private static final Map<String, Integer> counterStore = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         final WebServer webServer = new WebServer(Integer.parseInt(args[0]));
@@ -31,14 +29,11 @@ public class WebServer {
     public void start() throws IOException {
         serverSocket = new ServerSocket(this.portNumber);
         while (true) {
-            System.out.println("starting");
             final Socket clientSocket = serverSocket.accept();
             clientSocket.setKeepAlive(true);
             out = new DataOutputStream(clientSocket.getOutputStream());
             in = new DataInputStream(clientSocket.getInputStream());
-            System.out.println("reading");
             readPacket();
-            System.out.println("end reading");
             in.close();
             out.close();
             clientSocket.close();
@@ -86,8 +81,6 @@ public class WebServer {
                                 // The next one would be the content length size
                                 contentLengthHeaderPosition = headerInfo.size();
                             }
-                            System.out.println("header");
-                            System.out.println(header);
                             header = "";
                             continue;
                         } else {
@@ -102,8 +95,6 @@ public class WebServer {
 
                 // Parsing header data
                 final String responseType = headerInfo.get(0).toLowerCase();
-                System.out.println("responses data");
-                System.out.println(headerInfo.get(0));
                 // Read store type
                 // path is /counter/<key> or /cache/<key>
                 final String[] pathData = headerInfo.get(1).split("/", 3);
@@ -203,9 +194,11 @@ public class WebServer {
     }
 
     public void printOkResponseWithContent(byte[] content) throws IOException {
-        out.write(("200 OK content-length " + content.length + "  ").getBytes());
-        // TODO: print huge content out bit by bit
-        out.write(content);
+        byte[] a = ("200 OK content-length " + content.length + "  ").getBytes();
+        byte[] c = new byte[a.length + content.length];
+        System.arraycopy(a, 0, c, 0, a.length);
+        System.arraycopy(content, 0, c, a.length, content.length);
+        out.write(c);
         out.flush();
     }
 }
