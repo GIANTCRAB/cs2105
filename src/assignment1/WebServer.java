@@ -107,7 +107,7 @@ public class WebServer {
                 System.out.println(headerInfo.get(0));
                 // Read store type
                 // path is /counter/<key> or /cache/<key>
-                final String[] pathData = headerInfo.get(1).split("/");
+                final String[] pathData = headerInfo.get(1).split("/", 3);
                 // 0 is empty
                 storeType = pathData[1];
                 keyToWrite = pathData[2];
@@ -205,6 +205,7 @@ public class WebServer {
 
     public void printOkResponseWithContent(byte[] content) throws IOException {
         out.write(("200 OK content-length " + content.length + "  ").getBytes());
+        // TODO: print huge content out bit by bit
         out.write(content);
         out.flush();
     }

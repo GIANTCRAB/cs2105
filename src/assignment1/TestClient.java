@@ -71,6 +71,14 @@ public class TestClient {
             Thread.sleep(500);
             client1.sendMessage("GET /key/ModuleCode  ");
             Thread.sleep(500);
+            client1.sendMessage("POST /key/ABC UtterRubbish Content-Length 0  ");
+            Thread.sleep(500);
+            client1.sendMessage("GET /key/ABC  ");
+            Thread.sleep(500);
+            client1.sendMessage("POST /key/ABC/ABC UtterRubbish Content-Length 36  I really dislike this module man wtf");
+            Thread.sleep(500);
+            client1.sendMessage("GET /key/ABC/ABC  ");
+            Thread.sleep(500);
             client1.sendMessage("GET /counter/CS2105  ");
             Thread.sleep(500);
             client1.sendMessage("POST /counter/StudentNumber  ");
