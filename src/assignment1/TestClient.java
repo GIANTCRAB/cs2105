@@ -38,7 +38,17 @@ public class TestClient {
 
         private class EchoClientHandler extends Thread {
             public void run() {
-                in.lines().forEach(System.out::println);
+                int currByte;
+                char currChar;
+                try {
+                    while ((currByte = in.read()) != -1) {
+                        // do something
+                        currChar = (char) currByte;
+                        System.out.print(currChar);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -47,21 +57,25 @@ public class TestClient {
         EchoClient client1 = new EchoClient();
         try {
             client1.startConnection("127.0.0.1", 8080);
-            client1.sendMessage("GET\n/key/CS2105\n\n");
-            Thread.sleep(1000);
-            client1.sendMessage("POST\n/key/ModuleCode\nContent-Length\n6\n\nCS2105");
-            Thread.sleep(1000);
-            client1.sendMessage("GET\n/key/ModuleCode\n\n");
-            Thread.sleep(1000);
-            client1.sendMessage("POST\n/key/ModuleCode\nUtterRubbish\nContent-Length\n36\n\nI really dislike this module man wtf");
-            Thread.sleep(1000);
-            client1.sendMessage("GET\n/key/ModuleCode\n\n");
-            Thread.sleep(1000);
-            client1.sendMessage("GET\n/counter/CS2105\n\n");
-            Thread.sleep(1000);
-            client1.sendMessage("POST\n/counter/StudentNumber\n\n");
-            Thread.sleep(1000);
-            client1.sendMessage("GET\n/counter/StudentNumber\n\n");
+            client1.sendMessage("GET /key/CS2105  ");
+            Thread.sleep(500);
+            client1.sendMessage("POST /key/ModuleCode Content-Length 6  CS2105");
+            Thread.sleep(500);
+            client1.sendMessage("GET /key/ModuleCode  ");
+            Thread.sleep(500);
+            client1.sendMessage("POST /key/ModuleCode UtterRubbish Content-Length 36  I really dislike this module man wtf");
+            Thread.sleep(500);
+            client1.sendMessage("GET /key/ModuleCode  ");
+            Thread.sleep(500);
+            client1.sendMessage("DELETE /key/ModuleCode  ");
+            Thread.sleep(500);
+            client1.sendMessage("GET /key/ModuleCode  ");
+            Thread.sleep(500);
+            client1.sendMessage("GET /counter/CS2105  ");
+            Thread.sleep(500);
+            client1.sendMessage("POST /counter/StudentNumber  ");
+            Thread.sleep(500);
+            client1.sendMessage("GET /counter/StudentNumber  ");
             //client1.stopConnection();
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();

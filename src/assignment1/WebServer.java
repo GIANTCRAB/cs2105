@@ -17,7 +17,7 @@ public class WebServer {
     private DataInputStream in;
     private int portNumber;
 
-    private static ConcurrentMap<String, byte[]> kvStore = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, byte[]> kvStore = new ConcurrentHashMap<>();
     private static ConcurrentMap<String, Integer> counterStore = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
@@ -54,7 +54,7 @@ public class WebServer {
         int currByte;
         char currChar;
         // 2 continuous newlines = end of header
-        final char headerBoundaryChar = '\n';
+        final char headerBoundaryChar = ' ';
         int continuousNewLineCount = 0;
         final int maxContinuousNewLineCount = 2;
         boolean headerComplete = false;
@@ -87,6 +87,8 @@ public class WebServer {
                                 // The next one would be the content length size
                                 contentLengthHeaderPosition = headerInfo.size();
                             }
+                            System.out.println("header");
+                            System.out.println(header);
                             header = "";
                             continue;
                         } else {
@@ -130,11 +132,23 @@ public class WebServer {
                         // key-value store
                         if (responseType.equals("get")) {
                             // retrieve data
-                            byte[] data = kvStore.get(keyToWrite);
-                            if (data == null) {
-                                printNotFoundResponse();
-                            } else {
+                            if (kvStore.containsKey(keyToWrite)) {
+                                byte[] data = kvStore.get(keyToWrite);
                                 printOkResponseWithContent(data);
+                            } else {
+                                printNotFoundResponse();
+                            }
+
+                            // Reset
+                            headerInfo = new ArrayList<>();
+                            headerComplete = false;
+                        } else if (responseType.equals("delete")) {
+                            // Deletion spec
+                            if (kvStore.containsKey(keyToWrite)) {
+                                byte[] data = kvStore.remove(keyToWrite);
+                                printOkResponseWithContent(data);
+                            } else {
+                                printNotFoundResponse();
                             }
 
                             // Reset
@@ -169,15 +183,18 @@ public class WebServer {
     }
 
     public void printNotFoundResponse() throws IOException {
-        out.write("404\nNotFound\n\n".getBytes());
+        out.write("404 NotFound  ".getBytes());
+        out.flush();
     }
 
     public void printOkResponseWithNoContent() throws IOException {
-        out.write("200\nOK\n\n".getBytes());
+        out.write("200 OK  ".getBytes());
+        out.flush();
     }
 
     public void printOkResponseWithContent(byte[] content) throws IOException {
-        out.write(("200\nOK\ncontent-length\n" + content.length + "\n\n").getBytes());
+        out.write(("200 OK content-length " + content.length + "  ").getBytes());
         out.write(content);
+        out.flush();
     }
 }
