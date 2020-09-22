@@ -165,6 +165,7 @@ public class WebServer {
                         payloadIndex = 0;
                     } else {
                         // Content len is 0, just reset and read next packet
+                        kvStore.put(keyToWrite, new byte[0]);
                         printOkResponseWithNoContent();
 
                         headerInfo = new ArrayList<>();
