@@ -32,10 +32,10 @@ public class WebServer {
         serverSocket = ServerSocketChannel.open();
         serverSocket.bind(new InetSocketAddress(this.portNumber));
         while (true) {
-            System.out.println("starting");
             clientSocket = serverSocket.accept();
-            System.out.println("accepted n reading");
+            System.out.println("reading");
             readPacket();
+            System.out.println("end reading");
             clientSocket.close();
         }
     }
@@ -53,8 +53,9 @@ public class WebServer {
         final int maxContinuousNewLineCount = 2;
         boolean headerComplete = false;
         String header = "";
-        final int maxHeaderSize = 4;
-        List<String> headerInfo = new ArrayList<>(maxHeaderSize);
+        final String contentLengthHeaderName = "content-length";
+        int contentLengthHeaderPosition = -1;
+        List<String> headerInfo = new ArrayList<>();
         int payloadSizeBytes = 0;
         int payloadIndex = 0;
         byte[] payload = new byte[payloadSizeBytes];
@@ -65,7 +66,6 @@ public class WebServer {
         // read by byte buffer
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         while (clientSocket.read(buffer) != -1) { // not reached end of stream
-            System.out.println("reading byte");
             ByteArrayInputStream is = new ByteArrayInputStream(buffer.array());
             while ((currByte = is.read()) != 0) {
                 if (0 == payloadSizeBytes) {
@@ -81,6 +81,10 @@ public class WebServer {
                             continuousNewLineCount++;
                             if (continuousNewLineCount < maxContinuousNewLineCount) {
                                 headerInfo.add(header);
+                                if(header.toLowerCase().equals(contentLengthHeaderName)) {
+                                    // The next one would be the content length size
+                                    contentLengthHeaderPosition = headerInfo.size();
+                                }
                                 header = "";
                                 continue;
                             } else {
@@ -101,15 +105,11 @@ public class WebServer {
                     // path is /counter/<key> or /cache/<key>
                     final String[] pathData = headerInfo.get(1).split("/");
                     // 0 is empty
-                    System.out.println("path data");
-                    System.out.println(headerInfo.get(1));
                     storeType = pathData[1];
                     keyToWrite = pathData[2];
 
-                    System.out.println("header size");
-                    System.out.println(headerInfo.size());
-
-                    if (headerInfo.size() < maxHeaderSize) {
+                    // Check if content length header has been specified
+                    if (contentLengthHeaderPosition == -1) {
                         // no content-length in header
                         if (storeType.toLowerCase().equals("counter")) {
                             final int count = counterStore.getOrDefault(keyToWrite, 0);
@@ -122,7 +122,7 @@ public class WebServer {
                             }
 
                             // Reset
-                            headerInfo = new ArrayList<>(maxHeaderSize);
+                            headerInfo = new ArrayList<>();
                             headerComplete = false;
                         } else {
                             // key-value store
@@ -136,15 +136,17 @@ public class WebServer {
                                 }
 
                                 // Reset
-                                headerInfo = new ArrayList<>(maxHeaderSize);
+                                headerInfo = new ArrayList<>();
                                 headerComplete = false;
                             }
                         }
                     } else {
                         // Get payload size in bytes from header
-                        payloadSizeBytes = Integer.parseInt(headerInfo.get(3));
+                        payloadSizeBytes = Integer.parseInt(headerInfo.get(contentLengthHeaderPosition));
                         payload = new byte[payloadSizeBytes];
                         payloadIndex = 0;
+                        // Reset content length header position
+                        contentLengthHeaderPosition = -1;
                     }
                     continue; // currChar will be headerBoundaryChar, hence go to next iteration to read 1st payload byte
                 }
@@ -158,7 +160,7 @@ public class WebServer {
                     printOkResponseWithNoContent();
                     // Reset
                     payloadSizeBytes = 0;
-                    headerInfo = new ArrayList<>(maxHeaderSize);
+                    headerInfo = new ArrayList<>();
                     headerComplete = false;
                 }
             }

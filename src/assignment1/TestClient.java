@@ -53,6 +53,10 @@ public class TestClient {
             Thread.sleep(1000);
             client1.sendMessage("GET\n/key/ModuleCode\n\n");
             Thread.sleep(1000);
+            client1.sendMessage("POST\n/key/ModuleCode\nUtterRubbish\nContent-Length\n36\n\nI really dislike this module man wtf");
+            Thread.sleep(1000);
+            client1.sendMessage("GET\n/key/ModuleCode\n\n");
+            Thread.sleep(1000);
             client1.sendMessage("GET\n/counter/CS2105\n\n");
             Thread.sleep(1000);
             client1.sendMessage("POST\n/counter/StudentNumber\n\n");
