@@ -159,8 +159,18 @@ public class WebServer {
                 } else {
                     // Get payload size in bytes from header
                     payloadSizeBytes = Integer.parseInt(headerInfo.get(contentLengthHeaderPosition));
-                    payload = new byte[payloadSizeBytes];
-                    payloadIndex = 0;
+                    if (payloadSizeBytes != 0) {
+                        // Make sure content len isn't 0
+                        payload = new byte[payloadSizeBytes];
+                        payloadIndex = 0;
+                    } else {
+                        // Content len is 0, just reset and read next packet
+                        printOkResponseWithNoContent();
+
+                        headerInfo = new ArrayList<>();
+                        headerComplete = false;
+                    }
+
                     // Reset content length header position
                     contentLengthHeaderPosition = -1;
                 }
