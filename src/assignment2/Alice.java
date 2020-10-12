@@ -1,10 +1,13 @@
 package assignment2;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.*;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 import java.util.zip.CRC32;
 
@@ -31,10 +34,10 @@ public class Alice {
     private final int HEADER_LEN_SIZE = 4;
     private final int HEADER_CHECKSUM_SIZE = 8;
 
-    private DataPacket previousPacket;
+    private final Queue<DataPacket> packetQueue = new LinkedList<>();
 
     public static void main(String[] args) throws IOException {
-        final Alice alice = new Alice(Integer.parseInt(args[0]));
+        new Alice(Integer.parseInt(args[0]));
     }
 
     public Alice(int portNumber) throws SocketException, UnknownHostException {
@@ -42,15 +45,77 @@ public class Alice {
         this.address = InetAddress.getByName("localhost");
         this.portNumber = portNumber;
 
-        final DataPacket dataPacket = new DataPacket(this.generateInitialSequenceNumber(), "omegalul".getBytes());
-        try {
-            this.sendPacket(dataPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
+        // Start sender service that reads from a queue on a separate thread
+        new PacketProcessor(this.packetQueue).start();
+
+        // Start reading service that pipes data to the queue on the main thread
+        new DataReader(System.in, this.packetQueue);
+    }
+
+    private class DataReader {
+        private final InputStream inputStream;
+        private final Queue<DataPacket> packetQueue;
+
+        public DataReader(InputStream inputStream, Queue<DataPacket> packetQueue) {
+            this.inputStream = inputStream;
+            this.packetQueue = packetQueue;
+        }
+
+        public void readStream() throws IOException {
+            int currByte;
+            byte currData;
+            byte[] payload = new byte[maxDataSizePerPacket];
+            int payloadSize = 0;
+
+            while ((currByte = inputStream.read()) != -1) {
+                currData = (byte) currByte;
+                // Put into payload
+                if (payloadSize < maxDataSizePerPacket) {
+                    payload[payloadSize] = currData;
+                    payloadSize++;
+                } else {
+                    this.packetQueue.add(new DataPacket(generateInitialSequenceNumber(), payload));
+                    // Reset data
+                    payloadSize = 0;
+                    payload = new byte[maxDataSizePerPacket];
+                }
+            }
+
+            // stream has ended, flush out remaining data
+            if (payloadSize < 0) {
+                this.packetQueue.add(new DataPacket(generateInitialSequenceNumber(), payload));
+            }
         }
     }
 
-    // TODO: segment data into smaller packets
+    private class PacketProcessor extends Thread {
+        private final Queue<DataPacket> packetQueue;
+
+        public PacketProcessor(Queue<DataPacket> packetQueue) {
+            this.packetQueue = packetQueue;
+        }
+
+        public void run() {
+            // Read from packet queue
+            while (true) {
+                while (!this.packetQueue.isEmpty()) {
+                    final DataPacket dataPacket = this.packetQueue.poll();
+
+                    try {
+                        sendPacket(dataPacket);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                try {
+                    sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     public void sendPacket(DataPacket dataPacket) throws IOException {
         final byte[] dataPacketData = dataPacket.toData();
