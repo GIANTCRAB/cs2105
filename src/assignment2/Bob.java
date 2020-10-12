@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -26,7 +25,7 @@ public class Bob {
     private final int sequenceNumberSize = maxSequenceNumber + 1;
 
     private final int HEADER_SEQUENCE_NUMBER_SIZE = 4;
-    private final int HEADER_ACK_FLAG_SIZE = 1;
+    private final int HEADER_ACK_FLAG_SIZE = 2;
     private final int HEADER_LEN_SIZE = 4;
     private final int HEADER_CHECKSUM_SIZE = 8;
 
@@ -49,8 +48,8 @@ public class Bob {
             socket.receive(receivedPacket);
 
             // Get sender details
-            final InetAddress address = receivedPacket.getAddress();
-            int port = receivedPacket.getPort();
+            final InetAddress senderAddress = receivedPacket.getAddress();
+            final int senderPort = receivedPacket.getPort();
 
             try {
                 final ReceivedDataPacket receivedDataPacket = new ReceivedDataPacket(previousAckPacket, receivedBuffer);
@@ -62,14 +61,13 @@ public class Bob {
                 final byte[] ackPacketData = ackPacket.toData();
                 previousAckPacket = ackPacket;
 
-                final DatagramPacket ackReplyPacket = new DatagramPacket(ackPacketData, ackPacketData.length, address, port);
+                final DatagramPacket ackReplyPacket = new DatagramPacket(ackPacketData, maxHeaderSizePerPacket, senderAddress, senderPort);
                 socket.send(ackReplyPacket);
             } catch (ReceivedDataPacket.PacketCorrupted | ReceivedDataPacket.PacketDuplicate packetError) {
                 // Check if previous ack packet exists
                 // If does exists, send. If not, then wait for timeout.
                 if (previousAckPacket != null) {
-                    final byte[] previousAckPacketData = previousAckPacket.toData();
-                    final DatagramPacket ackReplyPacket = new DatagramPacket(previousAckPacketData, previousAckPacketData.length, address, port);
+                    final DatagramPacket ackReplyPacket = new DatagramPacket(previousAckPacket.toData(), maxHeaderSizePerPacket, senderAddress, senderPort);
                     socket.send(ackReplyPacket);
                 }
             }
@@ -130,22 +128,22 @@ public class Bob {
                 }
 
                 final byte[] ackFlagBytes = new byte[HEADER_ACK_FLAG_SIZE];
-                byteBuffer.get(ackFlagBytes, HEADER_SEQUENCE_NUMBER_SIZE, HEADER_ACK_FLAG_SIZE);
+                byteBuffer.get(ackFlagBytes, 0, HEADER_ACK_FLAG_SIZE);
                 this.ackFlag = ByteBuffer.wrap(ackFlagBytes).getChar();
                 if (this.ackFlag != expectedAckFlag) {
                     throw new PacketCorrupted();
                 }
 
                 final byte[] dataLenBytes = new byte[HEADER_LEN_SIZE];
-                byteBuffer.get(dataLenBytes, HEADER_SEQUENCE_NUMBER_SIZE + HEADER_ACK_FLAG_SIZE, HEADER_LEN_SIZE);
+                byteBuffer.get(dataLenBytes, 0, HEADER_LEN_SIZE);
                 this.dataLength = ByteBuffer.wrap(dataLenBytes).getInt();
 
                 final byte[] checksumBytes = new byte[HEADER_CHECKSUM_SIZE];
-                byteBuffer.get(checksumBytes, HEADER_SEQUENCE_NUMBER_SIZE + HEADER_ACK_FLAG_SIZE + HEADER_LEN_SIZE, HEADER_CHECKSUM_SIZE);
+                byteBuffer.get(checksumBytes, 0, HEADER_CHECKSUM_SIZE);
                 this.checkSum = ByteBuffer.wrap(checksumBytes).getLong();
 
                 // Handle content data
-                byteBuffer.get(this.rawData, maxHeaderSizePerPacket, maxDataSizePerPacket);
+                byteBuffer.get(this.rawData, 0, maxDataSizePerPacket);
 
                 if (this.dataLength > 0) {
                     // There must always be data
@@ -192,10 +190,10 @@ public class Bob {
             ByteBuffer byteBuffer = ByteBuffer.allocate(maxHeaderSizePerPacket);
 
             byte[] sequenceNumberBytes = ByteBuffer.allocate(HEADER_SEQUENCE_NUMBER_SIZE).putInt(this.getSequenceNumber()).array();
-            byteBuffer.put(sequenceNumberBytes, 0, HEADER_SEQUENCE_NUMBER_SIZE);
+            byteBuffer.put(sequenceNumberBytes);
 
             byte[] ackFlagBytes = ByteBuffer.allocate(HEADER_ACK_FLAG_SIZE).putChar(ackFlag).array();
-            byteBuffer.put(ackFlagBytes, HEADER_SEQUENCE_NUMBER_SIZE, HEADER_ACK_FLAG_SIZE);
+            byteBuffer.put(ackFlagBytes);
 
             return byteBuffer.array();
         }

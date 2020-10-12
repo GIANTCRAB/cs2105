@@ -27,7 +27,7 @@ public class Alice {
     private final int sequenceNumberSize = maxSequenceNumber + 1;
 
     private final int HEADER_SEQUENCE_NUMBER_SIZE = 4;
-    private final int HEADER_ACK_FLAG_SIZE = 1;
+    private final int HEADER_ACK_FLAG_SIZE = 2;
     private final int HEADER_LEN_SIZE = 4;
     private final int HEADER_CHECKSUM_SIZE = 8;
 
@@ -70,7 +70,7 @@ public class Alice {
                 final AckPacketVerifier ackPacketVerifier = new AckPacketVerifier(dataPacket, ackData);
 
                 messageNotAcknowledged = !ackPacketVerifier.isPacketAcknowledged(); // Get the inverse
-            } catch (SocketException socketException) {
+            } catch (SocketException | SocketTimeoutException socketException) {
                 // timeout
             }
         }
@@ -122,17 +122,17 @@ public class Alice {
             byteBuffer.put(sequenceNumberBytes, 0, HEADER_SEQUENCE_NUMBER_SIZE);
 
             final byte[] ackFlagBytes = ByteBuffer.allocate(HEADER_ACK_FLAG_SIZE).putChar(ackFlag).array();
-            byteBuffer.put(ackFlagBytes, HEADER_SEQUENCE_NUMBER_SIZE, HEADER_ACK_FLAG_SIZE);
+            byteBuffer.put(ackFlagBytes);
 
             final byte[] dataLenBytes = ByteBuffer.allocate(HEADER_LEN_SIZE).putInt(dataLength).array();
-            byteBuffer.put(dataLenBytes, HEADER_SEQUENCE_NUMBER_SIZE + HEADER_ACK_FLAG_SIZE, HEADER_LEN_SIZE);
+            byteBuffer.put(dataLenBytes);
 
             final byte[] checksumBytes = ByteBuffer.allocate(HEADER_CHECKSUM_SIZE).putLong(checkSum).array();
-            byteBuffer.put(checksumBytes, HEADER_SEQUENCE_NUMBER_SIZE + HEADER_ACK_FLAG_SIZE + HEADER_LEN_SIZE, HEADER_CHECKSUM_SIZE);
+            byteBuffer.put(checksumBytes);
 
             // Handle content data
-            final byte[] dataBytes = ByteBuffer.allocate(maxDataSizePerPacket).put(data).array();
-            byteBuffer.put(dataBytes, maxHeaderSizePerPacket, dataLength);
+            final byte[] dataBytes = ByteBuffer.allocate(dataLength).put(data).array();
+            byteBuffer.put(dataBytes);
 
             return byteBuffer.array();
         }
@@ -186,7 +186,7 @@ public class Alice {
                     this.sequenceNumber = ByteBuffer.wrap(sequenceNumberBuffer).getInt();
 
                     final byte[] ackFlagBuffer = new byte[HEADER_ACK_FLAG_SIZE];
-                    byteBuffer.get(ackFlagBuffer, HEADER_SEQUENCE_NUMBER_SIZE, HEADER_ACK_FLAG_SIZE);
+                    byteBuffer.get(ackFlagBuffer, 0, HEADER_ACK_FLAG_SIZE);
                     this.ackFlag = ByteBuffer.wrap(ackFlagBuffer).getChar();
                 } catch (BufferUnderflowException | BufferOverflowException | IndexOutOfBoundsException e) {
                     throw new PacketHeaderCorrupted();
