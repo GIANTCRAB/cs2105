@@ -19,8 +19,8 @@ import java.util.zip.CRC32;
  */
 public class Bob {
     private final DatagramSocket socket;
-    private final int maxHeaderSizePerPacket = 64;
-    private final int maxDataSizePerPacket = 1000;
+    private final int maxHeaderSizePerPacket = 18;
+    private final int maxDataSizePerPacket = 46;
     private final int maxSequenceNumber = 29999;
     private final int sequenceNumberSize = maxSequenceNumber + 1;
 

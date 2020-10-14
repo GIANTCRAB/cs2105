@@ -22,8 +22,8 @@ public class Alice {
     private DatagramSocket socket;
     private InetAddress address;
     private final int portNumber;
-    private final int maxHeaderSizePerPacket = 64;
-    private final int maxDataSizePerPacket = 1000;
+    private final int maxHeaderSizePerPacket = 18;
+    private final int maxDataSizePerPacket = 46;
     private final int timeout = 50;
     private final int minSequenceNumber = 0;
     private final int maxSequenceNumber = 29999;
@@ -40,7 +40,7 @@ public class Alice {
         new Alice(Integer.parseInt(args[0]));
     }
 
-    public Alice(int portNumber) throws SocketException, UnknownHostException {
+    public Alice(int portNumber) throws IOException {
         this.socket = new DatagramSocket();
         this.address = InetAddress.getByName("localhost");
         this.portNumber = portNumber;
@@ -49,7 +49,7 @@ public class Alice {
         new PacketProcessor(this.packetQueue).start();
 
         // Start reading service that pipes data to the queue on the main thread
-        new DataReader(System.in, this.packetQueue);
+        new DataReader(System.in, this.packetQueue).readStream();
     }
 
     private class DataReader {
@@ -78,11 +78,14 @@ public class Alice {
                     // Reset data
                     payloadSize = 0;
                     payload = new byte[maxDataSizePerPacket];
+                    // Add the data into the new payload
+                    payload[payloadSize] = currData;
+                    payloadSize++;
                 }
             }
 
             // stream has ended, flush out remaining data
-            if (payloadSize < 0) {
+            if (payloadSize > 0) {
                 this.packetQueue.add(new DataPacket(generateInitialSequenceNumber(), payload));
             }
         }
@@ -122,7 +125,7 @@ public class Alice {
         boolean messageNotAcknowledged = true;
 
         while (messageNotAcknowledged) {
-            final DatagramPacket sentPacket = new DatagramPacket(dataPacketData, dataPacketData.length, address, this.portNumber);
+            final DatagramPacket sentPacket = new DatagramPacket(dataPacketData, maxHeaderSizePerPacket + maxDataSizePerPacket, address, this.portNumber);
             socket.send(sentPacket);
 
             // Receiving reply
