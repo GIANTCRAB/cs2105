@@ -86,7 +86,10 @@ public class Alice {
 
             // stream has ended, flush out remaining data
             if (payloadSize > 0) {
-                this.packetQueue.add(new DataPacket(generateInitialSequenceNumber(), payload));
+                // repackage payload into proper size
+                final byte[] repackagedPayload = new byte[payloadSize];
+                ByteBuffer.wrap(repackagedPayload).put(payload, 0, payloadSize);
+                this.packetQueue.add(new DataPacket(generateInitialSequenceNumber(), repackagedPayload));
             }
         }
     }

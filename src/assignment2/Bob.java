@@ -40,9 +40,8 @@ public class Bob {
 
     public void run() throws IOException {
         AckPacket previousAckPacket = null;
-        boolean running = true;
 
-        while (running) {
+        while (true) {
             final byte[] receivedBuffer = new byte[maxHeaderSizePerPacket + maxDataSizePerPacket];
             final DatagramPacket receivedPacket = new DatagramPacket(receivedBuffer, receivedBuffer.length);
             socket.receive(receivedPacket);
@@ -71,9 +70,7 @@ public class Bob {
                     socket.send(ackReplyPacket);
                 }
             }
-
         }
-        socket.close();
     }
 
     private class ReceivedDataPacket {
