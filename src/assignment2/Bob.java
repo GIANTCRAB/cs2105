@@ -39,6 +39,7 @@ public class Bob {
     }
 
     public void run() throws IOException {
+        ReceivedDataPacket previousReceivedPacket = null;
         AckPacket previousAckPacket = null;
 
         while (true) {
@@ -51,9 +52,10 @@ public class Bob {
             final int senderPort = receivedPacket.getPort();
 
             try {
-                final ReceivedDataPacket receivedDataPacket = new ReceivedDataPacket(previousAckPacket, receivedBuffer);
+                final ReceivedDataPacket receivedDataPacket = new ReceivedDataPacket(previousReceivedPacket, receivedBuffer);
                 // Write received data to STOUT
                 System.out.write(receivedDataPacket.getParsedData());
+                previousReceivedPacket = receivedDataPacket;
 
                 // Reply with ack message
                 final AckPacket ackPacket = new AckPacket(receivedDataPacket);
@@ -75,7 +77,7 @@ public class Bob {
 
     private class ReceivedDataPacket {
         private final char expectedAckFlag = 0;
-        private final int duplicateSequenceNumber;
+        private final ReceivedDataPacket previousReceivedPacket;
 
         private final byte[] receivedData;
         private int sequenceNumber;
@@ -85,18 +87,18 @@ public class Bob {
         private final byte[] rawData = new byte[maxDataSizePerPacket];
         private byte[] parsedData;
 
-        public ReceivedDataPacket(AckPacket ackPacket, byte[] receivedData) throws PacketCorrupted, PacketDuplicate {
-            if (ackPacket == null) {
-                this.duplicateSequenceNumber = -1;
-            } else {
-                this.duplicateSequenceNumber = ackPacket.getSequenceNumber();
-            }
+        public ReceivedDataPacket(ReceivedDataPacket previousReceivedPacket, byte[] receivedData) throws PacketCorrupted, PacketDuplicate {
+            this.previousReceivedPacket = previousReceivedPacket; // Can be null
             this.receivedData = receivedData;
             this.parsePacket();
         }
 
         public byte[] getParsedData() {
             return parsedData;
+        }
+
+        public int getSequenceNumber() {
+            return this.sequenceNumber;
         }
 
         //TODO: verify logic
@@ -120,8 +122,11 @@ public class Bob {
                 final byte[] sequenceNumberBytes = new byte[HEADER_SEQUENCE_NUMBER_SIZE];
                 byteBuffer.get(sequenceNumberBytes, 0, HEADER_SEQUENCE_NUMBER_SIZE);
                 this.sequenceNumber = ByteBuffer.wrap(sequenceNumberBytes).getInt();
-                if (this.duplicateSequenceNumber != -1 && this.duplicateSequenceNumber == this.sequenceNumber) {
-                    throw new PacketDuplicate();
+                if (this.previousReceivedPacket != null) {
+                    final int duplicateSequenceNumber = previousReceivedPacket.getSequenceNumber();
+                    if (this.sequenceNumber == duplicateSequenceNumber) {
+                        throw new PacketDuplicate();
+                    }
                 }
 
                 final byte[] ackFlagBytes = new byte[HEADER_ACK_FLAG_SIZE];

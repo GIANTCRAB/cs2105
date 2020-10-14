@@ -133,7 +133,7 @@ public class Alice {
 
             // Receiving reply
             socket.setSoTimeout(timeout);
-            byte[] ackData = new byte[maxHeaderSizePerPacket];
+            final byte[] ackData = new byte[maxHeaderSizePerPacket];
             final DatagramPacket receivedPacket = new DatagramPacket(ackData, maxHeaderSizePerPacket);
             try {
                 socket.receive(receivedPacket);
